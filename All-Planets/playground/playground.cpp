@@ -16,6 +16,47 @@ using namespace glm;
 #include <common/shader.hpp>
 #include <playground/RenderingObject.h>
 
+glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 500.0f);
+glm::vec3 camera_target = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
+float camera_fov = 45.0f;
+float camera_speed = 100.0f;  // Adjust this value to change movement speed
+float mouse_sensitivity = 0.1f;
+
+void handleKeyInput(GLFWwindow* window) {
+    float deltaTime = 1.0f / 60.0f; // Assuming 60 FPS, you can implement proper timing if needed
+
+    // Forward/Backward
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        camera_position += camera_speed * deltaTime * glm::normalize(camera_target - camera_position);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        camera_position -= camera_speed * deltaTime * glm::normalize(camera_target - camera_position);
+
+    // Left/Right strafing
+    glm::vec3 right = glm::normalize(glm::cross(camera_target - camera_position, camera_up));
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camera_position -= right * camera_speed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camera_position += right * camera_speed * deltaTime;
+
+    // Up/Down
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+        camera_position += camera_up * camera_speed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+        camera_position -= camera_up * camera_speed * deltaTime;
+}
+
+void updateCamera(GLFWwindow* window) {
+    handleKeyInput(window);
+
+    // Update view matrix
+    V = glm::lookAt(
+        camera_position,
+        camera_target,
+        camera_up
+    );
+}
+
 // Earth rotation parameters (based on real data)
 const float EARTH_ROTATION_PERIOD = 24.0f; // hours
 const float EARTH_ORBIT_PERIOD = 365.0f; // days
@@ -77,7 +118,10 @@ int main( void )
 }
 
 void updateAnimationLoop()
-{
+{   
+    // Update camera
+    updateCamera(window);
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glUseProgram(programID);
 
@@ -116,7 +160,7 @@ void updateAnimationLoop()
 
     earth.M = earth.M * tilt_matrix * rotation_matrix;
 
-    // Update uniforms and draw
+    // Update uniforms with new camera view
     glUniformMatrix4fv(View_Matrix_ID, 1, GL_FALSE, &V[0][0]);
     glUniformMatrix4fv(Projection_Matrix_ID, 1, GL_FALSE, &P[0][0]);
     glUniformMatrix4fv(Model_Matrix_ID, 1, GL_FALSE, &earth.M[0][0]);
@@ -171,9 +215,10 @@ bool initializeWindow()
 
   // Ensure we can capture the escape key being pressed below
   glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+  // Set up input handling
+  glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  // Hide and capture cursor
 
-  // Dark blue background
-  glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
   return true;
 }
 

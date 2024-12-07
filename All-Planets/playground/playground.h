@@ -7,10 +7,21 @@
 // Include GLM
 #include <glm/glm.hpp>
 
+// Include GLFW
+#include <glfw3.h>
+
 #include <vector>
 #include <playground/parse_stl.h>
 
 #include "RenderingObject.h"
+
+// Camera variables
+extern glm::vec3 camera_position;
+extern glm::vec3 camera_target;
+extern glm::vec3 camera_up;
+extern float camera_fov;
+extern float camera_speed;
+extern float mouse_sensitivity;
 
 //program ID of the shaders, required for handling the shaders with OpenGL
 GLuint programID;
@@ -42,6 +53,10 @@ bool cleanupVertexbuffer(); //<<< frees all recources from the vertex buffer
 bool closeWindow(); //<<< Closes the OpenGL window and terminates GLFW
 
 void updataMovingObjectTransformation();
+
+// Camera functions
+void updateCamera(GLFWwindow* window);
+void handleKeyInput(GLFWwindow* window);
 
 
 #endif

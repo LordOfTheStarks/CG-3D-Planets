@@ -64,6 +64,7 @@ add_executable(playground
 	playground/RenderingObject.cpp
 	playground/RenderingObject.h
 	playground/2k_earth_daymap.bmp
+	playground/2k_moon.bmp
 	playground/sphere.stl
 	common/shader.cpp
 	common/shader.hpp

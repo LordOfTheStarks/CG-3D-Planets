@@ -16,45 +16,91 @@ using namespace glm;
 #include <common/shader.hpp>
 #include <playground/RenderingObject.h>
 
+// Camera variables
+float yaw = -90.0f;    // Horizontal rotation
+float pitch = 0.0f;     // Vertical rotation
+float lastX = 1024.0f / 2.0f;   // Screen center X
+float lastY = 768.0f / 2.0f;    // Screen center Y
+bool firstMouse = true;
+
 glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 500.0f);
+glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 camera_target = glm::vec3(0.0f, 0.0f, 0.0f);
 glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
 float camera_fov = 45.0f;
-float camera_speed = 100.0f;  // Adjust this value to change movement speed
+float camera_speed = 50.0f;  // Adjust this value to change movement speed
 float mouse_sensitivity = 0.1f;
 
 void handleKeyInput(GLFWwindow* window) {
-    float deltaTime = 1.0f / 60.0f; // Assuming 60 FPS, you can implement proper timing if needed
+    float deltaTime = 1.0f / 60.0f;
+
+    // Calculate the camera's right vector
+    glm::vec3 right = glm::normalize(glm::cross(camera_front, camera_up));
+
+    float actualSpeed = camera_speed * deltaTime;
 
     // Forward/Backward
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera_position += camera_speed * deltaTime * glm::normalize(camera_target - camera_position);
+        camera_position += actualSpeed * camera_front;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera_position -= camera_speed * deltaTime * glm::normalize(camera_target - camera_position);
+        camera_position -= actualSpeed * camera_front;
 
-    // Left/Right strafing
-    glm::vec3 right = glm::normalize(glm::cross(camera_target - camera_position, camera_up));
+    // Left/Right
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera_position -= right * camera_speed * deltaTime;
+        camera_position -= right * actualSpeed;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera_position += right * camera_speed * deltaTime;
+        camera_position += right * actualSpeed;
 
     // Up/Down
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-        camera_position += camera_up * camera_speed * deltaTime;
+        camera_position += camera_up * actualSpeed;
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
-        camera_position -= camera_up * camera_speed * deltaTime;
+        camera_position -= camera_up * actualSpeed;
+
+    // Update camera target based on position and front vector
+    camera_target = camera_position + camera_front;
 }
 
 void updateCamera(GLFWwindow* window) {
     handleKeyInput(window);
 
     // Update view matrix
-    V = glm::lookAt(
-        camera_position,
-        camera_target,
-        camera_up
-    );
+    V = glm::lookAt(camera_position, camera_target, camera_up);
+}
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    if (firstMouse) {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos;
+    lastX = xpos;
+    lastY = ypos;
+
+    xoffset *= mouse_sensitivity;
+    yoffset *= mouse_sensitivity;
+
+    yaw += xoffset;
+    pitch += yoffset;
+
+    // Constrain pitch
+    if (pitch > 89.0f)
+        pitch = 89.0f;
+    if (pitch < -89.0f)
+        pitch = -89.0f;
+
+    // Update camera front vector
+    glm::vec3 direction;
+    direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    direction.y = sin(glm::radians(pitch));
+    direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    camera_front = glm::normalize(direction);
+
+    // Update camera target
+    camera_target = camera_position + camera_front;
 }
 
 // Earth rotation parameters (based on real data)
@@ -129,7 +175,7 @@ void updateAnimationLoop()
     glUniform1i(earth.textureSamplerID, 0);
 
     // Increase rotation speed (adjust multiplier as needed)
-    float speedMultiplier = 5000.0f; // Makes it 5 times faster
+    float speedMultiplier = 500.0f; // Makes it 5 times faster
     float rotation_per_frame = ((2 * 3.14159f) / (EARTH_ROTATION_PERIOD * 3600 * 60.0f)) * speedMultiplier;
     earth_rotation_angle += rotation_per_frame;
 
@@ -213,12 +259,13 @@ bool initializeWindow()
     return false;
   }
 
-  // Ensure we can capture the escape key being pressed below
-  glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
   // Set up input handling
   glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  // Hide and capture cursor
+  glfwSetCursorPosCallback(window, mouse_callback);  // Add this line
 
+  // Dark blue background
+  glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
   return true;
 }
 

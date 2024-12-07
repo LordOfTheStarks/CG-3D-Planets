@@ -58,17 +58,37 @@ void RenderingObject::SetTexture(std::vector< glm::vec2 > uvbufferdata, GLubyte 
   glBufferData(GL_ARRAY_BUFFER, uvbufferdata.size() * sizeof(glm::vec2), &uvbufferdata[0], GL_STATIC_DRAW);
 }
 
-void RenderingObject::SetTexture(std::vector< glm::vec2 > uvbufferdata, std::string bmpPath)
-{
-  texture_present = true;
-  glGenTextures(1, &texID);
-  texID = loadBMP_custom(bmpPath.c_str());
-  
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+void RenderingObject::SetTexture(std::vector<glm::vec2> uvbufferdata, std::string bmpPath) {
+    texture_present = true;
 
-  glGenBuffers(1, &uvbuffer);
-  glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-  glBufferData(GL_ARRAY_BUFFER, uvbufferdata.size() * sizeof(glm::vec2), &uvbufferdata[0], GL_STATIC_DRAW);
+    // Generate and bind texture
+    glGenTextures(1, &texID);
+    glBindTexture(GL_TEXTURE_2D, texID);
+
+    // Load texture from file
+    texID = loadBMP_custom(bmpPath.c_str());
+
+    // Set texture parameters
+    glBindTexture(GL_TEXTURE_2D, texID);
+
+    // Change back to GL_REPEAT for proper wrapping
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Generate mipmaps
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    // Set up UV buffer
+    glGenBuffers(1, &uvbuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+    glBufferData(GL_ARRAY_BUFFER, uvbufferdata.size() * sizeof(glm::vec2), &uvbufferdata[0], GL_STATIC_DRAW);
+
+    // Enable texture coordinates attribute
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 }
 
 void RenderingObject::DrawObject()
@@ -100,38 +120,40 @@ void RenderingObject::DrawObject()
 
   if (texture_present)
   {
-    // Bind our texture in Texture Unit 0
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texID);
-    // Set our "myTextureSampler" sampler to use Texture Unit 0
-    glUniform1i(textureSamplerID, 0);
+      // Bind texture before setting up the attribute
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, texID);
 
-    // 2nd attribute buffer : texture
-    glEnableVertexAttribArray(2);
-    glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-    glVertexAttribPointer(
-      2,                                // attribute. No particular reason for 1, but must match the layout in the shader.
-      2,                                // size : U+V => 2
-      GL_FLOAT,                         // type
-      GL_FALSE,                         // normalized?
-      0,                                // stride
-      (void*)0                          // array buffer offset
-    );
+      // Enable and bind UV coordinates
+      glEnableVertexAttribArray(2);
+      glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+      glVertexAttribPointer(
+          2,                  // attribute 2
+          2,                  // size (u, v)
+          GL_FLOAT,          // type
+          GL_FALSE,          // normalized?
+          0,                 // stride
+          (void*)0           // array buffer offset
+      );
   }
 
-  // Draw the triangle !
-  glDrawArrays(GL_TRIANGLES, 0, VertexBufferSize); // 3 indices starting at 0 -> 1 triangle
+  // Draw
+  glDrawArrays(GL_TRIANGLES, 0, VertexBufferSize / sizeof(glm::vec3));
 
+  // Disable vertex arrays
   glDisableVertexAttribArray(0);
+  glDisableVertexAttribArray(1);
+  if (texture_present) {
+      glDisableVertexAttribArray(2);
+  }
 }
 
 void RenderingObject::LoadSTL(std::string stl_file_name) {
-    // Load STL file and construct vertex buffer
     auto info = stl::parse_stl(stl_file_name);
     std::vector<stl::triangle> triangles = info.triangles;
     std::vector<glm::vec3> vertices;
     std::vector<glm::vec3> normals;
-    std::vector<glm::vec2> uvbufferdata; // Add this line for UV data
+    std::vector<glm::vec2> uvbufferdata;
 
     // Calculate bounding box to determine scaling
     float min_x = std::numeric_limits<float>::max();
@@ -166,6 +188,7 @@ void RenderingObject::LoadSTL(std::string stl_file_name) {
     float center_z = (min_z + max_z) / 2.0f;
 
     for (auto t : triangles) {
+        // Add vertices
         glm::vec3 v1((t.v1.x - center_x) * scaling_factor,
             (t.v1.y - center_y) * scaling_factor,
             (t.v1.z - center_z) * scaling_factor);
@@ -180,27 +203,72 @@ void RenderingObject::LoadSTL(std::string stl_file_name) {
         vertices.push_back(v2);
         vertices.push_back(v3);
 
-        // Calculate UV coordinates for each vertex
-        uvbufferdata.push_back(generateUV(v1));
-        uvbufferdata.push_back(generateUV(v2));
-        uvbufferdata.push_back(generateUV(v3));
+        // Normalize vertices for UV calculation
+        glm::vec3 n1 = glm::normalize(v1);
+        glm::vec3 n2 = glm::normalize(v2);
+        glm::vec3 n3 = glm::normalize(v3);
+
+        // Generate UV coordinates with seam handling
+        glm::vec2 uv1 = generateUV(n1);
+        glm::vec2 uv2 = generateUV(n2);
+        glm::vec2 uv3 = generateUV(n3);
+
+        // Fix texture seam
+        if (isSeamVertex(n1) || isSeamVertex(n2) || isSeamVertex(n3)) {
+            float u1 = uv1.x, u2 = uv2.x, u3 = uv3.x;
+            if (std::abs(u1 - u2) > 0.5f) {
+                if (u1 < u2) u1 += 1.0f;
+                else u2 += 1.0f;
+            }
+            if (std::abs(u2 - u3) > 0.5f) {
+                if (u2 < u3) u2 += 1.0f;
+                else u3 += 1.0f;
+            }
+            if (std::abs(u3 - u1) > 0.5f) {
+                if (u3 < u1) u3 += 1.0f;
+                else u1 += 1.0f;
+            }
+            uv1.x = u1;
+            uv2.x = u2;
+            uv3.x = u3;
+        }
+
+        uvbufferdata.push_back(uv1);
+        uvbufferdata.push_back(uv2);
+        uvbufferdata.push_back(uv3);
     }
 
     this->SetVertices(vertices);
     computeVertexNormalsOfTriangles(vertices, normals);
     this->SetNormals(normals);
-
-    // Set UV data
-    SetTexture(uvbufferdata, "2k_earth_daymap.bmp"); // Ensure you use a proper texture file path
+    this->SetTexture(uvbufferdata, "2k_earth_daymap.bmp");
 }
+bool RenderingObject::isSeamVertex(const glm::vec3& normalized) {
+    // Check if vertex is near the texture seam
+    float angle = atan2(normalized.z, normalized.x);
+    float threshold = 0.005f; // Smaller threshold for more precise seam detection
+    return std::abs(std::abs(angle) - M_PI) < threshold;
+}
+
 glm::vec2 RenderingObject::generateUV(const glm::vec3& vertex) {
-    // Convert 3D position to spherical UV coordinates
-    float u = 0.0f + (atan2(vertex.z, vertex.x) / (2.0f * M_PI));
-    float v = 0.0f - (asin(vertex.y / glm::length(vertex)) / M_PI);
+    // Normalize the vertex
+    glm::vec3 normalized = glm::normalize(vertex);
+
+    // Calculate spherical coordinates
+    float u = 0.5f + (atan2(normalized.z, normalized.x) / (2.0f * M_PI));
+    float v = 0.5f + (asin(normalized.y) / M_PI);
+
+    // Ensure UV coordinates are properly wrapped
+    u = 1.0f - u; // Flip the U coordinate to fix the mirroring
+
+    // More precise wrapping
+    if (u > 1.0f) u -= floor(u);
+    if (u < 0.0f) u += ceil(-u);
+
+    v = glm::clamp(v, 0.0f, 1.0f);
+
     return glm::vec2(u, v);
 }
-
-
 
 std::vector<glm::vec3> RenderingObject::getAllTriangleNormalsForVertex(stl::point vertex, std::vector<stl::triangle> triangles)
 {

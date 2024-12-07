@@ -20,6 +20,8 @@ public:
   void DrawObject();
   void LoadSTL(std::string);
 
+  bool isSeamVertex(const glm::vec3& normalized);
+
   glm::vec2 generateUV(const glm::vec3& vertex);
 
   //vertex array object (VAO)

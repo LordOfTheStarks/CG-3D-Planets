@@ -1,4 +1,4 @@
-#include "playground.h"
+ï»¿#include "playground.h"
 
 // Include GLFW
 #include <glfw3.h>
@@ -17,8 +17,8 @@ using namespace glm;
 #include <playground/RenderingObject.h>
 
 // Earth rotation parameters (based on real data)
-const float EARTH_ROTATION_PERIOD = 23.934f; // hours
-const float EARTH_ORBIT_PERIOD = 365.256f; // days
+const float EARTH_ROTATION_PERIOD = 24.0f; // hours
+const float EARTH_ORBIT_PERIOD = 365.0f; // days
 
 float earth_rotation_angle = 0.0f;
 float earth_orbit_angle = 0.0f;
@@ -78,58 +78,51 @@ int main( void )
 
 void updateAnimationLoop()
 {
-    // Clear the screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Use our shader
     glUseProgram(programID);
 
-    // Rotation rate: one full rotation per 24 hours (in radians per frame)
-    // Assuming 60 FPS
-    float rotation_per_frame = (2 * 3.14159f) / (24 * 3600 * 60.0f);
-    earth_rotation_angle += rotation_per_frame;
+    // Set the texture sampler uniform
+    glUniform1i(earth.textureSamplerID, 0);
 
-    // Orbit rate: one full orbit per 365.256 days
-    float orbit_per_frame = (2 * 3.14159f) / (365.256f * 24 * 3600 * 60.0f);
-    earth_orbit_angle += orbit_per_frame;
+    // Increase rotation speed (adjust multiplier as needed)
+    float speedMultiplier = 5000.0f; // Makes it 5 times faster
+    float rotation_per_frame = ((2 * 3.14159f) / (EARTH_ROTATION_PERIOD * 3600 * 60.0f)) * speedMultiplier;
+    earth_rotation_angle += rotation_per_frame;
 
     // Reset transformation matrix
     earth.M = glm::mat4(1.0f);
 
-    // Orbit around the sun (along a circular path)
-    float orbit_radius = 300.0f;
+    // Reduce orbit radius for better view
+    float orbit_radius = 150.0f; // Was 300.0f
     float x = orbit_radius * cos(earth_orbit_angle);
     float z = orbit_radius * sin(earth_orbit_angle);
 
-    // First, translate to orbit position
+    // First translate to orbit position
     earth.M = glm::translate(earth.M, glm::vec3(x, 0.0f, z));
 
-    // Then, rotate on its own axis 
-    // Tilted axis: Earth's axial tilt is about 23.5 degrees
+    // Apply rotation with proper axis
     glm::mat4 rotation_matrix = glm::rotate(
         glm::mat4(1.0f),
         earth_rotation_angle,
-        glm::vec3(0.0f, 1.0f, 0.0f)  // Rotation around y-axis
+        glm::vec3(0.0f, 1.0f, 0.0f)
     );
 
-    // Combine the rotation with a slight tilt
+    // Apply axial tilt
     glm::mat4 tilt_matrix = glm::rotate(
         glm::mat4(1.0f),
-        glm::radians(23.5f),  // Earth's axial tilt
-        glm::vec3(1.0f, 0.0f, 0.0f)  // Tilt around x-axis
+        glm::radians(23.5f),
+        glm::vec3(1.0f, 0.0f, 0.0f)
     );
 
     earth.M = earth.M * tilt_matrix * rotation_matrix;
 
-    // Send our transformation to the currently bound shader
+    // Update uniforms and draw
     glUniformMatrix4fv(View_Matrix_ID, 1, GL_FALSE, &V[0][0]);
     glUniformMatrix4fv(Projection_Matrix_ID, 1, GL_FALSE, &P[0][0]);
     glUniformMatrix4fv(Model_Matrix_ID, 1, GL_FALSE, &earth.M[0][0]);
 
-    // Draw Earth
     earth.DrawObject();
 
-    // Swap buffers
     glfwSwapBuffers(window);
     glfwPollEvents();
 }
@@ -186,25 +179,19 @@ bool initializeWindow()
 
 bool initializeMVPTransformation()
 {
-    // Get a handle for our "MVP" uniform
+    // Get handles for uniforms.
     Model_Matrix_ID = glGetUniformLocation(programID, "M");
     Projection_Matrix_ID = glGetUniformLocation(programID, "P");
     View_Matrix_ID = glGetUniformLocation(programID, "V");
 
-    if (Model_Matrix_ID == -1 || Projection_Matrix_ID == -1 || View_Matrix_ID == -1) {
-        std::cerr << "Error: Invalid uniform location!" << std::endl;
-        exit(-1);
-    }
+    // Adjust the field of view to 45 degrees for more natural perspective
+    P = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 10000.0f);
 
-
-    // Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 10000 units
-    P = glm::perspective(glm::radians(90.0f), 4.0f / 3.0f, 0.1f, 10000.0f);
-
-    // Camera matrix
+    // Adjust camera position for better view
     V = glm::lookAt(
-        glm::vec3(0, 200, cam_z),  // Slightly raised camera
-        glm::vec3(0, 0, 0),        // Looking at the origin
-        glm::vec3(0, 1, 1)         // Head is up
+        glm::vec3(0, 0, 500),    // Camera position (removed Y offset)
+        glm::vec3(0, 0, 0),      // Look at the origin
+        glm::vec3(0, 1, 0)       // Head is up (fixed up vector)
     );
 
     return true;
@@ -215,17 +202,9 @@ bool initializeVertexbuffer()
     // Earth object
     earth = RenderingObject();
     earth.InitializeVAO();
-    earth.LoadSTL("sphere.stl"); // Assuming you have a sphere.stl file
+    earth.LoadSTL("sphere.stl");
 
-    // Create texture coordinates for sphere
-    std::vector< glm::vec2 > uvbufferdata;
-    for (int i = 0; i < 6; i++) {
-        uvbufferdata.push_back({ 0.0f, 0.0f });
-        uvbufferdata.push_back({ 1.0f, 0.0f });
-        uvbufferdata.push_back({ 1.0f, 1.0f });
-    }
-    earth.SetTexture(uvbufferdata, "2k_earth_daymap.bmp");
-
+    // Remove the manual UV creation as it's now handled in LoadSTL
     return true;
 }
 
@@ -241,5 +220,3 @@ bool closeWindow()
   glfwTerminate();
   return true;
 }
-
-

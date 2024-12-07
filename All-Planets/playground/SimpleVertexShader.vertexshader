@@ -1,40 +1,36 @@
 #version 450 core
-// Input vertex data, different for all executions of this shader.
 layout(location = 0) in vec3 vertexPosition_modelspace;
 layout(location = 1) in vec3 vertexNormal_modelspace;
 layout(location = 2) in vec2 vertexUV;
 
-// Values that stay constant for the whole mesh.
 uniform mat4 M;
 uniform mat4 V;
 uniform mat4 P;
 
-//Output variables
 out vec3 fNormal;
 out vec3 fPosition;
 out vec3 fLight;
 out vec2 UV;
 
-void main(){
+void main() {
     mat4 MV = V * M;
     mat4 MVP = P * V * M;
     
-    // Transform position and normal to camera space fragment shader for lighting 
+    // Transform position
     vec4 positionHom = MV * vec4(vertexPosition_modelspace, 1.0);
     fPosition = positionHom.xyz;
     
-    // Correctly transform normals
-    mat4 normalMatrix = transpose(inverse(MV));
-    vec4 normalHom = normalMatrix * vec4(vertexNormal_modelspace, 1.0);
-    fNormal = normalHom.xyz;
+    // Transform normals using the normal matrix
+    mat3 normalMatrix = mat3(transpose(inverse(MV)));
+    fNormal = normalMatrix * vertexNormal_modelspace;
     
-    // Fixed light position (simulating sun)
-    vec4 lightHom = vec4(1000.0, 0.0, 0.0, 1.0);
+    // Light position (adjusted for better Earth illumination)
+    vec4 lightHom = vec4(2000.0, 1000.0, 1000.0, 1.0); // Adjusted light position
     fLight = (V * lightHom).xyz;
 
-    // Output position of the vertex, in clip space : MVP * position
-    gl_Position = MVP * vec4(vertexPosition_modelspace, 1);
-
-    // UV of the vertex
+    // Final position
+    gl_Position = MVP * vec4(vertexPosition_modelspace, 1.0);
+    
+    // Pass UV coordinates
     UV = vertexUV;
 }

@@ -20,6 +20,8 @@ public:
   void DrawObject();
   void LoadSTL(std::string);
 
+  glm::vec2 generateUV(const glm::vec3& vertex);
+
   //vertex array object (VAO)
   GLuint VertexArrayID;
   int VertexBufferSize;

@@ -23,7 +23,7 @@ glm::mat4 P;
 GLuint Model_Matrix_ID;
 
 RenderingObject ground;
-RenderingObject bunny;
+RenderingObject earth;
 RenderingObject obj3;
 
 float curr_x;

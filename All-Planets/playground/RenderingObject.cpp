@@ -2,6 +2,10 @@
 #include <common/texture.hpp>
 #include <playground/parse_stl.h>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 RenderingObject::RenderingObject() : texture_present(false), M(glm::mat4(1.0f))
 {
   
@@ -121,23 +125,82 @@ void RenderingObject::DrawObject()
   glDisableVertexAttribArray(0);
 }
 
-void RenderingObject::LoadSTL(std::string stl_file_name)
-{
-  //load stl file and construct vertex buffer
-  auto info = stl::parse_stl(stl_file_name);
-  std::vector<stl::triangle> triangles = info.triangles;
-  std::vector< glm::vec3 > vertices;
-  std::vector< glm::vec3 > normals;
-  for (auto t : info.triangles) {
-    vertices.push_back(glm::vec3(t.v1.x, t.v1.y, t.v1.z));
-    vertices.push_back(glm::vec3(t.v2.x, t.v2.y, t.v2.z));
-    vertices.push_back(glm::vec3(t.v3.x, t.v3.y, t.v3.z));
-  }
-  this->SetVertices(vertices);
-  computeVertexNormalsOfTriangles(vertices, normals);
-  this->SetNormals(normals);
+void RenderingObject::LoadSTL(std::string stl_file_name) {
+    // Load STL file and construct vertex buffer
+    auto info = stl::parse_stl(stl_file_name);
+    std::vector<stl::triangle> triangles = info.triangles;
+    std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> normals;
+    std::vector<glm::vec2> uvbufferdata; // Add this line for UV data
 
+    // Calculate bounding box to determine scaling
+    float min_x = std::numeric_limits<float>::max();
+    float max_x = std::numeric_limits<float>::lowest();
+    float min_y = std::numeric_limits<float>::max();
+    float max_y = std::numeric_limits<float>::lowest();
+    float min_z = std::numeric_limits<float>::max();
+    float max_z = std::numeric_limits<float>::lowest();
+
+
+    // First pass: find bounding box
+    for (auto t : triangles) {
+        min_x = std::min({ min_x, t.v1.x, t.v2.x, t.v3.x });
+        max_x = std::max({ max_x, t.v1.x, t.v2.x, t.v3.x });
+        min_y = std::min({ min_y, t.v1.y, t.v2.y, t.v3.y });
+        max_y = std::max({ max_y, t.v1.y, t.v2.y, t.v3.y });
+        min_z = std::min({ min_z, t.v1.z, t.v2.z, t.v3.z });
+        max_z = std::max({ max_z, t.v1.z, t.v2.z, t.v3.z });
+    }
+
+    // Calculate scaling factor to normalize to unit sphere
+    float scale_x = max_x - min_x;
+    float scale_y = max_y - min_y;
+    float scale_z = max_z - min_z;
+    float max_scale = std::max({ scale_x, scale_y, scale_z });
+    float scaling_factor = 150.0f / max_scale; // Increase the scaling factor to make Earth larger
+    // Scale to radius of 50
+
+    // Second pass: create vertices with scaling and centering
+    float center_x = (min_x + max_x) / 2.0f;
+    float center_y = (min_y + max_y) / 2.0f;
+    float center_z = (min_z + max_z) / 2.0f;
+
+    for (auto t : triangles) {
+        glm::vec3 v1((t.v1.x - center_x) * scaling_factor,
+            (t.v1.y - center_y) * scaling_factor,
+            (t.v1.z - center_z) * scaling_factor);
+        glm::vec3 v2((t.v2.x - center_x) * scaling_factor,
+            (t.v2.y - center_y) * scaling_factor,
+            (t.v2.z - center_z) * scaling_factor);
+        glm::vec3 v3((t.v3.x - center_x) * scaling_factor,
+            (t.v3.y - center_y) * scaling_factor,
+            (t.v3.z - center_z) * scaling_factor);
+
+        vertices.push_back(v1);
+        vertices.push_back(v2);
+        vertices.push_back(v3);
+
+        // Calculate UV coordinates for each vertex
+        uvbufferdata.push_back(generateUV(v1));
+        uvbufferdata.push_back(generateUV(v2));
+        uvbufferdata.push_back(generateUV(v3));
+    }
+
+    this->SetVertices(vertices);
+    computeVertexNormalsOfTriangles(vertices, normals);
+    this->SetNormals(normals);
+
+    // Set UV data
+    SetTexture(uvbufferdata, "2k_earth_daymap.bmp"); // Ensure you use a proper texture file path
 }
+glm::vec2 RenderingObject::generateUV(const glm::vec3& vertex) {
+    // Convert 3D position to spherical UV coordinates
+    float u = 0.0f + (atan2(vertex.z, vertex.x) / (2.0f * M_PI));
+    float v = 0.0f - (asin(vertex.y / glm::length(vertex)) / M_PI);
+    return glm::vec2(u, v);
+}
+
+
 
 std::vector<glm::vec3> RenderingObject::getAllTriangleNormalsForVertex(stl::point vertex, std::vector<stl::triangle> triangles)
 {

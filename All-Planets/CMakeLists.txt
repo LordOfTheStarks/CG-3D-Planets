@@ -63,9 +63,8 @@ add_executable(playground
 	playground/parse_stl.h
 	playground/RenderingObject.cpp
 	playground/RenderingObject.h
-	resources/8k_earth_daymap.jpg
-	resources/sphere.stl
-	resources/brick_2.bmp
+	playground/2k_earth_daymap.bmp
+	playground/sphere.stl
 	common/shader.cpp
 	common/shader.hpp
 	common/texture.cpp

@@ -22,6 +22,8 @@ public:
 
   bool isSeamVertex(const glm::vec3& normalized);
 
+  std::vector<glm::vec2>& GetUVBuffer() { return uvbufferdata; }
+
   glm::vec2 generateUV(const glm::vec3& vertex);
 
   //vertex array object (VAO)
@@ -54,6 +56,7 @@ protected:
 
   std::vector<glm::vec3> getAllTriangleNormalsForVertex(stl::point vertex, std::vector<stl::triangle> triangles);
   glm::vec3 computeMeanVector(std::vector<glm::vec3>);
+  std::vector<glm::vec2> uvbufferdata;
   
 
 };

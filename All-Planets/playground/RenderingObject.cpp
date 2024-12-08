@@ -6,9 +6,8 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-RenderingObject::RenderingObject() : texture_present(false), M(glm::mat4(1.0f))
-{
-  
+RenderingObject::RenderingObject() : texture_present(false), M(glm::mat4(1.0f)) {
+    uvbufferdata = std::vector<glm::vec2>();  // Initialize empty vector
 }
 RenderingObject::~RenderingObject() {}
 
@@ -93,6 +92,9 @@ void RenderingObject::SetTexture(std::vector<glm::vec2> uvbufferdata, std::strin
 
 void RenderingObject::DrawObject()
 {
+    if (VertexBufferSize == 0) {
+        return;  // Don't draw if there are no vertices
+    }
   
   // 1rst attribute buffer : vertices
   glEnableVertexAttribArray(0);
@@ -118,7 +120,7 @@ void RenderingObject::DrawObject()
     (void*)0            // array buffer offset
   );
 
-  if (texture_present)
+  if (texture_present && !uvbufferdata.empty())
   {
       // Bind texture before setting up the attribute
       glActiveTexture(GL_TEXTURE0);
@@ -153,7 +155,7 @@ void RenderingObject::LoadSTL(std::string stl_file_name) {
     std::vector<stl::triangle> triangles = info.triangles;
     std::vector<glm::vec3> vertices;
     std::vector<glm::vec3> normals;
-    std::vector<glm::vec2> uvbufferdata;
+    uvbufferdata.clear();  // Clear any existing UV data
 
     // Calculate bounding box to determine scaling
     float min_x = std::numeric_limits<float>::max();
@@ -162,7 +164,6 @@ void RenderingObject::LoadSTL(std::string stl_file_name) {
     float max_y = std::numeric_limits<float>::lowest();
     float min_z = std::numeric_limits<float>::max();
     float max_z = std::numeric_limits<float>::lowest();
-
 
     // First pass: find bounding box
     for (auto t : triangles) {
@@ -174,15 +175,14 @@ void RenderingObject::LoadSTL(std::string stl_file_name) {
         max_z = std::max({ max_z, t.v1.z, t.v2.z, t.v3.z });
     }
 
-    // Calculate scaling factor to normalize to unit sphere
+    // Calculate scaling factor
     float scale_x = max_x - min_x;
     float scale_y = max_y - min_y;
     float scale_z = max_z - min_z;
     float max_scale = std::max({ scale_x, scale_y, scale_z });
-    float scaling_factor = 150.0f / max_scale; // Increase the scaling factor to make Earth larger
-    // Scale to radius of 50
+    float scaling_factor = 150.0f / max_scale;
 
-    // Second pass: create vertices with scaling and centering
+    // Calculate center
     float center_x = (min_x + max_x) / 2.0f;
     float center_y = (min_y + max_y) / 2.0f;
     float center_z = (min_z + max_z) / 2.0f;
@@ -208,12 +208,12 @@ void RenderingObject::LoadSTL(std::string stl_file_name) {
         glm::vec3 n2 = glm::normalize(v2);
         glm::vec3 n3 = glm::normalize(v3);
 
-        // Generate UV coordinates with seam handling
+        // Generate UV coordinates
         glm::vec2 uv1 = generateUV(n1);
         glm::vec2 uv2 = generateUV(n2);
         glm::vec2 uv3 = generateUV(n3);
 
-        // Fix texture seam
+        // Fix texture seam if needed
         if (isSeamVertex(n1) || isSeamVertex(n2) || isSeamVertex(n3)) {
             float u1 = uv1.x, u2 = uv2.x, u3 = uv3.x;
             if (std::abs(u1 - u2) > 0.5f) {
@@ -233,6 +233,7 @@ void RenderingObject::LoadSTL(std::string stl_file_name) {
             uv3.x = u3;
         }
 
+        // Store UV coordinates directly in member variable
         uvbufferdata.push_back(uv1);
         uvbufferdata.push_back(uv2);
         uvbufferdata.push_back(uv3);
@@ -241,7 +242,6 @@ void RenderingObject::LoadSTL(std::string stl_file_name) {
     this->SetVertices(vertices);
     computeVertexNormalsOfTriangles(vertices, normals);
     this->SetNormals(normals);
-    this->SetTexture(uvbufferdata, "2k_earth_daymap.bmp");
 }
 bool RenderingObject::isSeamVertex(const glm::vec3& normalized) {
     // Check if vertex is near the texture seam

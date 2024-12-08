@@ -102,20 +102,25 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     // Update camera target
     camera_target = camera_position + camera_front;
 }
+// Constants for real-world time periods (in days for better readability)
+const float DAYS_PER_EARTH_ROTATION = 1.0f;          // Earth rotates once per day
+const float DAYS_PER_EARTH_YEAR = 365.25f;          // Days per Earth year
+const float DAYS_PER_MOON_ORBIT = 27.322f;          // Moon's sidereal period in days
+const float PI = 3.14159f;
 
-// Earth rotation parameters (based on real data)
-const float EARTH_ROTATION_PERIOD = 24.0f; // hours
-const float EARTH_ORBIT_PERIOD = 365.0f; // days
+// Convert days to seconds for internal calculations
+const float SECONDS_PER_DAY = 86400.0f;  // 24 * 60 * 60
 
+// Visualization parameters
+const float TIME_SCALE = 100000.0f;               // Simulation runs 1000x faster than real time
+const float MOON_ORBIT_DISTANCE = 200.0f;       // Visible distance between Earth and Moon
+const float MOON_SCALE = 0.27f;                 // Moon's size relative to Earth
+
+// Rotation and orbit angles (add these declarations)
 float earth_rotation_angle = 0.0f;
 float earth_orbit_angle = 0.0f;
-
-// Mars rotation parameters (based on real data)
-const float MARS_ROTATION_PERIOD = 24.622f; // hours
-const float MARS_ORBIT_PERIOD = 686.971f; // days
-
-float mars_rotation_angle = 0.0f;
-float mars_orbit_angle = 0.0f;
+float moon_rotation_angle = 0.0f;
+float moon_orbit_angle = 0.0f;
 
 int main( void )
 {
@@ -163,55 +168,58 @@ int main( void )
 	return 0;
 }
 
-void updateAnimationLoop()
-{   
-    // Update camera
+void updateAnimationLoop() {
     updateCamera(window);
-
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glUseProgram(programID);
 
-    // Set the texture sampler uniform
-    glUniform1i(earth.textureSamplerID, 0);
+    // Calculate time step (assuming 60 FPS)
+    float deltaTime = 1.0f / 60.0f;
+    float simulatedDays = (deltaTime * TIME_SCALE) / SECONDS_PER_DAY;
 
-    // Increase rotation speed (adjust multiplier as needed)
-    float speedMultiplier = 500.0f; // Makes it 5 times faster
-    float rotation_per_frame = ((2 * 3.14159f) / (EARTH_ROTATION_PERIOD * 3600 * 60.0f)) * speedMultiplier;
-    earth_rotation_angle += rotation_per_frame;
+    // Earth's rotation around its axis
+    earth_rotation_angle += (2.0f * PI * simulatedDays) / DAYS_PER_EARTH_ROTATION;
 
-    // Reset transformation matrix
+    // Earth's orbit around the Sun
+    earth_orbit_angle += (2.0f * PI * simulatedDays) / DAYS_PER_EARTH_YEAR;
+
+    // Moon's orbit around Earth
+    moon_orbit_angle += (2.0f * PI * simulatedDays) / DAYS_PER_MOON_ORBIT;
+
+    // Calculate Earth's position
+    float orbit_radius = 150.0f;
+    float earth_x = orbit_radius * cos(earth_orbit_angle);
+    float earth_z = orbit_radius * sin(earth_orbit_angle);
+
+    // Update Earth's transformation
     earth.M = glm::mat4(1.0f);
+    earth.M = glm::translate(earth.M, glm::vec3(earth_x, 0.0f, earth_z));
+    earth.M = earth.M * glm::rotate(glm::mat4(1.0f), glm::radians(23.5f), glm::vec3(1.0f, 0.0f, 0.0f));
+    earth.M = earth.M * glm::rotate(glm::mat4(1.0f), earth_rotation_angle, glm::vec3(0.0f, 1.0f, 0.0f));
 
-    // Reduce orbit radius for better view
-    float orbit_radius = 150.0f; // Was 300.0f
-    float x = orbit_radius * cos(earth_orbit_angle);
-    float z = orbit_radius * sin(earth_orbit_angle);
+    // Calculate Moon's position relative to Earth
+    float moon_x = earth_x + MOON_ORBIT_DISTANCE * cos(moon_orbit_angle);
+    float moon_z = earth_z + MOON_ORBIT_DISTANCE * sin(moon_orbit_angle);
 
-    // First translate to orbit position
-    earth.M = glm::translate(earth.M, glm::vec3(x, 0.0f, z));
+    // Update Moon's transformation with proper tidal locking
+    moon.M = glm::mat4(1.0f);
+    moon.M = glm::translate(moon.M, glm::vec3(moon_x, 0.0f, moon_z));
+    moon.M = glm::scale(moon.M, glm::vec3(MOON_SCALE));
 
-    // Apply rotation with proper axis
-    glm::mat4 rotation_matrix = glm::rotate(
-        glm::mat4(1.0f),
-        earth_rotation_angle,
-        glm::vec3(0.0f, 1.0f, 0.0f)
-    );
+    // This rotation ensures the same side always faces Earth
+    glm::vec3 moon_to_earth = glm::normalize(glm::vec3(earth_x, 0.0f, earth_z) - glm::vec3(moon_x, 0.0f, moon_z));
+    float moon_facing_angle = atan2(moon_to_earth.z, moon_to_earth.x) + PI / 2.0f;
+    moon.M = moon.M * glm::rotate(glm::mat4(1.0f), moon_facing_angle, glm::vec3(0.0f, 1.0f, 0.0f));
 
-    // Apply axial tilt
-    glm::mat4 tilt_matrix = glm::rotate(
-        glm::mat4(1.0f),
-        glm::radians(23.5f),
-        glm::vec3(1.0f, 0.0f, 0.0f)
-    );
-
-    earth.M = earth.M * tilt_matrix * rotation_matrix;
-
-    // Update uniforms with new camera view
+    // Draw Earth
     glUniformMatrix4fv(View_Matrix_ID, 1, GL_FALSE, &V[0][0]);
     glUniformMatrix4fv(Projection_Matrix_ID, 1, GL_FALSE, &P[0][0]);
     glUniformMatrix4fv(Model_Matrix_ID, 1, GL_FALSE, &earth.M[0][0]);
-
     earth.DrawObject();
+
+    // Draw Moon
+    glUniformMatrix4fv(Model_Matrix_ID, 1, GL_FALSE, &moon.M[0][0]);
+    moon.DrawObject();
 
     glfwSwapBuffers(window);
     glfwPollEvents();
@@ -289,14 +297,28 @@ bool initializeMVPTransformation()
     return true;
 }
 
-bool initializeVertexbuffer()
-{
+bool initializeVertexbuffer() {
     // Earth object
     earth = RenderingObject();
     earth.InitializeVAO();
     earth.LoadSTL("sphere.stl");
 
-    // Remove the manual UV creation as it's now handled in LoadSTL
+    std::vector<glm::vec2> earthUV = earth.GetUVBuffer();
+    if (!earthUV.empty()) {
+        earth.SetTexture(earthUV, "2k_earth_daymap.bmp");
+    }
+
+    // Moon object
+    moon = RenderingObject();
+    moon.InitializeVAO();
+    moon.LoadSTL("sphere.stl");
+
+    // Set moon texture after loading STL
+    std::vector<glm::vec2> moonUV = moon.GetUVBuffer();
+    if (!moonUV.empty()) {
+        moon.SetTexture(moonUV, "2k_moon.bmp");
+    }
+
     return true;
 }
 

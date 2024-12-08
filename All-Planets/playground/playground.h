@@ -35,7 +35,7 @@ GLuint Model_Matrix_ID;
 
 RenderingObject ground;
 RenderingObject earth;
-RenderingObject obj3;
+RenderingObject moon;
 
 float curr_x;
 float curr_y;

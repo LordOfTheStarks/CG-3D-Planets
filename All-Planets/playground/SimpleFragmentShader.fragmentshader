@@ -1,42 +1,53 @@
+// SimpleFragmentShader.fragmentshader
 #version 450 core
-out vec4 color; // Changed to vec4 for proper output
+out vec4 color;
 
 in vec3 fNormal;
 in vec3 fPosition;
 in vec3 fLight;
 in vec2 UV;
+in float fIsSun;
 
 uniform sampler2D myTextureSampler;
 
 void main() {
-    // Normalize vectors
+    if (fIsSun > 0.5) {
+        vec3 sunColor = texture(myTextureSampler, UV).rgb;
+        color = vec4(sunColor * 1.5, 1.0);
+        return;
+    }
+
+    // Enhanced lighting for Earth and Moon
     vec3 N = normalize(fNormal);
     vec3 L = normalize(fLight - fPosition);
     vec3 E = normalize(-fPosition);
     vec3 R = reflect(-L, N);
     
-    // Material parameters
     vec3 materialColor = texture(myTextureSampler, UV).rgb;
-    float ka = 0.2;   // Ambient coefficient (reduced)
-    float kd = 0.7;   // Diffuse coefficient
-    float ks = 0.1;   // Specular coefficient
-    float shininess = 32.0;
     
-    // Lighting calculations
+    // Adjusted lighting parameters
+    float ka = 0.3;    // Increased ambient light (was 0.1)
+    float kd = 1.0;    // Increased diffuse contribution (was 0.8)
+    float ks = 0.5;    // Increased specular highlight (was 0.2)
+    float shininess = 16.0; // Reduced for softer highlights (was 32.0)
+    
+    // Softer light attenuation
+    float distance = length(fLight - fPosition);
+    float attenuation = 1.0 / (1.0 + 0.000001 * distance * distance); // Reduced attenuation factor
+    
     vec3 ambient = ka * materialColor;
-    
     float diff = max(dot(N, L), 0.0);
     vec3 diffuse = kd * diff * materialColor;
     
     float spec = pow(max(dot(E, R), 0.0), shininess);
-    vec3 specular = ks * spec * vec3(1.0); // White specular highlights
+    vec3 specular = ks * spec * vec3(1.0);
     
-    // Combine all components
-    vec3 finalColor = ambient + diffuse + specular;
+    // Enhanced lighting calculation
+    vec3 finalColor = ambient + (diffuse + specular) * attenuation;
     
-    // Ensure color values are in valid range
+    // Boost the brightness slightly
+    finalColor = finalColor * 1.2;
+    
     finalColor = clamp(finalColor, 0.0, 1.0);
-    
-    // Output final color with full opacity
     color = vec4(finalColor, 1.0);
 }

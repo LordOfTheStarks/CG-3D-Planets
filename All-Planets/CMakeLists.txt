@@ -68,7 +68,7 @@ add_executable(playground
 	playground/2k_earth_daymap.bmp
 	playground/2k_moon.bmp
 	playground/2k_stars_milky_way.bmp
-	playground/2k_stars_milky_way.jpg
+	playground/2k_sun.bmp
 	playground/sphere.stl
 	playground/background.h
 	playground/background.cpp

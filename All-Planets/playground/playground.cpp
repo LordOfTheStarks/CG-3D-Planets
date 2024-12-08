@@ -112,11 +112,14 @@ const float PI = 3.14159f;
 const float SECONDS_PER_DAY = 86400.0f;  // 24 * 60 * 60
 
 // Visualization parameters
-const float TIME_SCALE = 100000.0f;               // Simulation runs 1000x faster than real time
+const float TIME_SCALE = 10000.0f;               // Simulation runs 1000x faster than real time
 const float MOON_ORBIT_DISTANCE = 200.0f;       // Visible distance between Earth and Moon
 const float MOON_SCALE = 0.27f;                 // Moon's size relative to Earth
 
-// Rotation and orbit angles (add these declarations)
+const float SUN_SCALE = 2.0f;  // Sun is about 109 times larger than Earth
+const float SUN_ORBIT_DISTANCE = 0.0f;  // Sun stays at center
+
+// Rotation and orbit angles
 float earth_rotation_angle = 0.0f;
 float earth_orbit_angle = 0.0f;
 float moon_rotation_angle = 0.0f;
@@ -177,19 +180,29 @@ void updateAnimationLoop() {
     float deltaTime = 1.0f / 60.0f;
     float simulatedDays = (deltaTime * TIME_SCALE) / SECONDS_PER_DAY;
 
-    // Earth's rotation around its axis
-    earth_rotation_angle += (2.0f * PI * simulatedDays) / DAYS_PER_EARTH_ROTATION;
+    // Set common matrices
+    glUniformMatrix4fv(View_Matrix_ID, 1, GL_FALSE, &V[0][0]);
+    glUniformMatrix4fv(Projection_Matrix_ID, 1, GL_FALSE, &P[0][0]);
 
-    // Earth's orbit around the Sun
+    // Set sun position for lighting calculations
+    glm::vec3 sunPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+    glUniform3fv(SunPosition_worldspace_ID, 1, &sunPosition[0]);
+
+    // Draw Sun
+    sun.M = glm::mat4(1.0f);
+    sun.M = glm::scale(sun.M, glm::vec3(SUN_SCALE));
+    glUniformMatrix4fv(Model_Matrix_ID, 1, GL_FALSE, &sun.M[0][0]);
+    glUniform1i(IsSun_ID, 1);  // This is the sun
+    sun.DrawObject();
+
+    // Earth's rotation and orbit
+    earth_rotation_angle += (2.0f * PI * simulatedDays) / DAYS_PER_EARTH_ROTATION;
     earth_orbit_angle += (2.0f * PI * simulatedDays) / DAYS_PER_EARTH_YEAR;
 
-    // Moon's orbit around Earth
-    moon_orbit_angle += (2.0f * PI * simulatedDays) / DAYS_PER_MOON_ORBIT;
-
     // Calculate Earth's position
-    float orbit_radius = 150.0f;
-    float earth_x = orbit_radius * cos(earth_orbit_angle);
-    float earth_z = orbit_radius * sin(earth_orbit_angle);
+    float earth_orbit_radius = 400.0f; // Increased for better scale
+    float earth_x = earth_orbit_radius * cos(earth_orbit_angle);
+    float earth_z = earth_orbit_radius * sin(earth_orbit_angle);
 
     // Update Earth's transformation
     earth.M = glm::mat4(1.0f);
@@ -197,28 +210,31 @@ void updateAnimationLoop() {
     earth.M = earth.M * glm::rotate(glm::mat4(1.0f), glm::radians(23.5f), glm::vec3(1.0f, 0.0f, 0.0f));
     earth.M = earth.M * glm::rotate(glm::mat4(1.0f), earth_rotation_angle, glm::vec3(0.0f, 1.0f, 0.0f));
 
+    // Draw Earth
+    glUniformMatrix4fv(Model_Matrix_ID, 1, GL_FALSE, &earth.M[0][0]);
+    glUniform1i(IsSun_ID, 0);  // This is not the sun
+    earth.DrawObject();
+
+    // Moon's orbit around Earth
+    moon_orbit_angle += (2.0f * PI * simulatedDays) / DAYS_PER_MOON_ORBIT;
+
     // Calculate Moon's position relative to Earth
     float moon_x = earth_x + MOON_ORBIT_DISTANCE * cos(moon_orbit_angle);
     float moon_z = earth_z + MOON_ORBIT_DISTANCE * sin(moon_orbit_angle);
 
-    // Update Moon's transformation with proper tidal locking
+    // Update Moon's transformation with tidal locking
     moon.M = glm::mat4(1.0f);
     moon.M = glm::translate(moon.M, glm::vec3(moon_x, 0.0f, moon_z));
     moon.M = glm::scale(moon.M, glm::vec3(MOON_SCALE));
 
-    // This rotation ensures the same side always faces Earth
+    // Calculate Moon's rotation to maintain tidal locking
     glm::vec3 moon_to_earth = glm::normalize(glm::vec3(earth_x, 0.0f, earth_z) - glm::vec3(moon_x, 0.0f, moon_z));
     float moon_facing_angle = atan2(moon_to_earth.z, moon_to_earth.x) + PI / 2.0f;
     moon.M = moon.M * glm::rotate(glm::mat4(1.0f), moon_facing_angle, glm::vec3(0.0f, 1.0f, 0.0f));
 
-    // Draw Earth
-    glUniformMatrix4fv(View_Matrix_ID, 1, GL_FALSE, &V[0][0]);
-    glUniformMatrix4fv(Projection_Matrix_ID, 1, GL_FALSE, &P[0][0]);
-    glUniformMatrix4fv(Model_Matrix_ID, 1, GL_FALSE, &earth.M[0][0]);
-    earth.DrawObject();
-
     // Draw Moon
     glUniformMatrix4fv(Model_Matrix_ID, 1, GL_FALSE, &moon.M[0][0]);
+    glUniform1i(IsSun_ID, 0);  // This is not the sun
     moon.DrawObject();
 
     glfwSwapBuffers(window);
@@ -284,6 +300,9 @@ bool initializeMVPTransformation()
     Projection_Matrix_ID = glGetUniformLocation(programID, "P");
     View_Matrix_ID = glGetUniformLocation(programID, "V");
 
+    SunPosition_worldspace_ID = glGetUniformLocation(programID, "SunPosition_worldspace");
+    IsSun_ID = glGetUniformLocation(programID, "isSun");
+
     // Adjust the field of view to 45 degrees for more natural perspective
     P = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 10000.0f);
 
@@ -298,6 +317,16 @@ bool initializeMVPTransformation()
 }
 
 bool initializeVertexbuffer() {
+
+    // Sun object
+    sun = RenderingObject();
+    sun.InitializeVAO();
+    sun.LoadSTL("sphere.stl");
+    std::vector<glm::vec2> sunUV = sun.GetUVBuffer();
+    if (!sunUV.empty()) {
+        sun.SetTexture(sunUV, "2k_sun.bmp");
+    }
+
     // Earth object
     earth = RenderingObject();
     earth.InitializeVAO();

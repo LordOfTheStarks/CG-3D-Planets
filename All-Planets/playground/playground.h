@@ -22,6 +22,7 @@ extern glm::vec3 camera_up;
 extern float camera_fov;
 extern float camera_speed;
 extern float mouse_sensitivity;
+extern const float EARTH_SUN_DISTANCE;
 
 //program ID of the shaders, required for handling the shaders with OpenGL
 GLuint programID;
@@ -32,10 +33,13 @@ glm::mat4 V;
 GLuint Projection_Matrix_ID;
 glm::mat4 P;
 GLuint Model_Matrix_ID;
+GLuint SunPosition_worldspace_ID;
+GLuint IsSun_ID;
 
 RenderingObject ground;
 RenderingObject earth;
 RenderingObject moon;
+RenderingObject sun;
 
 float curr_x;
 float curr_y;

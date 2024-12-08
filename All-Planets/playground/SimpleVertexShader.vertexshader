@@ -1,22 +1,28 @@
+// SimpleVertexShader.vertexshader
 #version 450 core
 layout(location = 0) in vec3 vertexPosition_modelspace;
 layout(location = 1) in vec3 vertexNormal_modelspace;
 layout(location = 2) in vec2 vertexUV;
 
+// Uniforms
 uniform mat4 M;
 uniform mat4 V;
 uniform mat4 P;
+uniform vec3 SunPosition_worldspace;
+uniform int isSun;  // Changed from bool to int
 
+// Outputs to fragment shader
 out vec3 fNormal;
 out vec3 fPosition;
 out vec3 fLight;
 out vec2 UV;
+out float fIsSun;  // Changed from bool to float
 
 void main() {
     mat4 MV = V * M;
     mat4 MVP = P * V * M;
     
-    // Transform position
+    // Transform vertex position to camera space
     vec4 positionHom = MV * vec4(vertexPosition_modelspace, 1.0);
     fPosition = positionHom.xyz;
     
@@ -24,13 +30,14 @@ void main() {
     mat3 normalMatrix = mat3(transpose(inverse(MV)));
     fNormal = normalMatrix * vertexNormal_modelspace;
     
-    // Light position (adjusted for better Earth illumination)
-    vec4 lightHom = vec4(2000.0, 1000.0, 1000.0, 1.0); // Adjusted light position
-    fLight = (V * lightHom).xyz;
+    // Transform sun position to camera space
+    vec4 sunPos = V * vec4(SunPosition_worldspace, 1.0);
+    fLight = sunPos.xyz;
 
     // Final position
     gl_Position = MVP * vec4(vertexPosition_modelspace, 1.0);
     
-    // Pass UV coordinates
+    // Pass UV coordinates and sun flag
     UV = vertexUV;
+    fIsSun = float(isSun);  // Convert int to float
 }

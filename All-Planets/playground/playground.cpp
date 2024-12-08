@@ -23,12 +23,12 @@ float lastX = 1024.0f / 2.0f;   // Screen center X
 float lastY = 768.0f / 2.0f;    // Screen center Y
 bool firstMouse = true;
 
-glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 500.0f);
+glm::vec3 camera_position = glm::vec3(0.0f, 2000.0f, 3000.0f);  // Positioned higher and further back
 glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 camera_target = glm::vec3(0.0f, 0.0f, 0.0f);
 glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
 float camera_fov = 45.0f;
-float camera_speed = 50.0f;  // Adjust this value to change movement speed
+float camera_speed = 200.0f;  // Adjust this value to change movement speed
 float mouse_sensitivity = 0.1f;
 
 void handleKeyInput(GLFWwindow* window) {
@@ -63,6 +63,7 @@ void handleKeyInput(GLFWwindow* window) {
 
 void updateCamera(GLFWwindow* window) {
     handleKeyInput(window);
+    handleTimeControls(window);  // Add time control handling
 
     // Update view matrix
     V = glm::lookAt(camera_position, camera_target, camera_up);
@@ -104,6 +105,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
 }
 // Constants for real-world time periods (in days for better readability)
 const float DAYS_PER_EARTH_ROTATION = 1.0f;          // Earth rotates once per day
+const float EARTH_SCALE = 1.0f;       // Earth is our reference size
 const float DAYS_PER_EARTH_YEAR = 365.25f;          // Days per Earth year
 const float DAYS_PER_MOON_ORBIT = 27.322f;          // Moon's sidereal period in days
 const float PI = 3.14159f;
@@ -112,18 +114,52 @@ const float PI = 3.14159f;
 const float SECONDS_PER_DAY = 86400.0f;  // 24 * 60 * 60
 
 // Visualization parameters
-const float TIME_SCALE = 10000.0f;               // Simulation runs 1000x faster than real time
-const float MOON_ORBIT_DISTANCE = 200.0f;       // Visible distance between Earth and Moon
+const float MOON_ORBIT_DISTANCE = 150.0f;       // Visible distance between Earth and Moon
 const float MOON_SCALE = 0.27f;                 // Moon's size relative to Earth
 
-const float SUN_SCALE = 2.0f;  // Sun is about 109 times larger than Earth
+const float SUN_SCALE = 15.0f;  // Sun is about 109 times larger than Earth
 const float SUN_ORBIT_DISTANCE = 0.0f;  // Sun stays at center
+
+// Time control constants
+const float BASE_TIME_SCALE = 1000.0f;    // Starting orbital speed
+const float MIN_TIME_SCALE = 100.0f;      // Minimum orbital speed
+const float MAX_TIME_SCALE = 1000000.0f;  // Maximum orbital speed
+float current_time_scale = BASE_TIME_SCALE;  // Current orbital speed
 
 // Rotation and orbit angles
 float earth_rotation_angle = 0.0f;
 float earth_orbit_angle = 0.0f;
 float moon_rotation_angle = 0.0f;
 float moon_orbit_angle = 0.0f;
+
+void handleTimeControls(GLFWwindow* window) {
+    static bool xPressed = false;
+    static bool cPressed = false;
+
+    // Slow down with X key
+    if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) {
+        if (!xPressed) {  // Only trigger once per press
+            current_time_scale = max(current_time_scale / 10.0f, MIN_TIME_SCALE);
+            xPressed = true;
+            printf("Simulation speed: %.0fx\n", current_time_scale);
+        }
+    }
+    else {
+        xPressed = false;
+    }
+
+    // Speed up with C key
+    if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
+        if (!cPressed) {  // Only trigger once per press
+            current_time_scale = min(current_time_scale * 10.0f, MAX_TIME_SCALE);
+            cPressed = true;
+            printf("Simulation speed: %.0fx\n", current_time_scale);
+        }
+    }
+    else {
+        cPressed = false;
+    }
+}
 
 int main( void )
 {
@@ -176,9 +212,9 @@ void updateAnimationLoop() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glUseProgram(programID);
 
-    // Calculate time step (assuming 60 FPS)
+    // Calculate time step using current_time_scale for orbital movements
     float deltaTime = 1.0f / 60.0f;
-    float simulatedDays = (deltaTime * TIME_SCALE) / SECONDS_PER_DAY;
+    float simulatedDays = (deltaTime * current_time_scale) / SECONDS_PER_DAY;
 
     // Set common matrices
     glUniformMatrix4fv(View_Matrix_ID, 1, GL_FALSE, &V[0][0]);
@@ -192,7 +228,7 @@ void updateAnimationLoop() {
     sun.M = glm::mat4(1.0f);
     sun.M = glm::scale(sun.M, glm::vec3(SUN_SCALE));
     glUniformMatrix4fv(Model_Matrix_ID, 1, GL_FALSE, &sun.M[0][0]);
-    glUniform1i(IsSun_ID, 1);  // This is the sun
+    glUniform1i(IsSun_ID, 1);
     sun.DrawObject();
 
     // Earth's rotation and orbit
@@ -200,7 +236,7 @@ void updateAnimationLoop() {
     earth_orbit_angle += (2.0f * PI * simulatedDays) / DAYS_PER_EARTH_YEAR;
 
     // Calculate Earth's position
-    float earth_orbit_radius = 400.0f; // Increased for better scale
+    float earth_orbit_radius = 3000.0f; // Increased for better scale
     float earth_x = earth_orbit_radius * cos(earth_orbit_angle);
     float earth_z = earth_orbit_radius * sin(earth_orbit_angle);
 
@@ -209,6 +245,7 @@ void updateAnimationLoop() {
     earth.M = glm::translate(earth.M, glm::vec3(earth_x, 0.0f, earth_z));
     earth.M = earth.M * glm::rotate(glm::mat4(1.0f), glm::radians(23.5f), glm::vec3(1.0f, 0.0f, 0.0f));
     earth.M = earth.M * glm::rotate(glm::mat4(1.0f), earth_rotation_angle, glm::vec3(0.0f, 1.0f, 0.0f));
+    earth.M = glm::scale(earth.M, glm::vec3(EARTH_SCALE));
 
     // Draw Earth
     glUniformMatrix4fv(Model_Matrix_ID, 1, GL_FALSE, &earth.M[0][0]);
@@ -265,7 +302,7 @@ bool initializeWindow()
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
   // Open a window and create its OpenGL context
-  window = glfwCreateWindow(1024, 768, "Example: simple cube", NULL, NULL);
+  window = glfwCreateWindow(1400, 1050, "Solar System", NULL, NULL);
   if (window == NULL) {
     fprintf(stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n");
     getchar();
@@ -288,8 +325,7 @@ bool initializeWindow()
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  // Hide and capture cursor
   glfwSetCursorPosCallback(window, mouse_callback);  // Add this line
 
-  // Dark blue background
-  glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
+  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);  // RGBA values for black
   return true;
 }
 
@@ -303,14 +339,18 @@ bool initializeMVPTransformation()
     SunPosition_worldspace_ID = glGetUniformLocation(programID, "SunPosition_worldspace");
     IsSun_ID = glGetUniformLocation(programID, "isSun");
 
-    // Adjust the field of view to 45 degrees for more natural perspective
-    P = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 10000.0f);
+    P = glm::perspective(
+        glm::radians(45.0f),
+        4.0f / 3.0f,
+        1.0f,        // Near plane
+        50000.0f     // Far plane increased for larger distances
+    );
 
-    // Adjust camera position for better view
+    // Initial camera view
     V = glm::lookAt(
-        glm::vec3(0, 0, 500),    // Camera position (removed Y offset)
-        glm::vec3(0, 0, 0),      // Look at the origin
-        glm::vec3(0, 1, 0)       // Head is up (fixed up vector)
+        camera_position,
+        glm::vec3(0, 0, 0),  // Look at the origin (Sun)
+        glm::vec3(0, 1, 0)
     );
 
     return true;

@@ -62,6 +62,7 @@ void updataMovingObjectTransformation();
 void updateCamera(GLFWwindow* window);
 void handleKeyInput(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+void handleTimeControls(GLFWwindow* window);
 
 
 #endif

@@ -25,15 +25,14 @@ void main() {
     
     vec3 materialColor = texture(myTextureSampler, UV).rgb;
     
-    // Adjusted lighting parameters
-    float ka = 0.3;    // Increased ambient light (was 0.1)
-    float kd = 1.0;    // Increased diffuse contribution (was 0.8)
-    float ks = 0.5;    // Increased specular highlight (was 0.2)
-    float shininess = 16.0; // Reduced for softer highlights (was 32.0)
+    // Basic lighting parameters
+    float ka = 0.02;    // Keep very low ambient for darker shadows
+    float kd = 2.0;     // Keep high diffuse for brighter lit areas
+    float ks = 0.6;     // Keep original specular
+    float shininess = 12.0; // Keep original shininess
     
-    // Softer light attenuation
     float distance = length(fLight - fPosition);
-    float attenuation = 1.0 / (1.0 + 0.000001 * distance * distance); // Reduced attenuation factor
+    float attenuation = 1.0 / (1.0 + 0.0000001 * distance * distance);
     
     vec3 ambient = ka * materialColor;
     float diff = max(dot(N, L), 0.0);
@@ -42,11 +41,11 @@ void main() {
     float spec = pow(max(dot(E, R), 0.0), shininess);
     vec3 specular = ks * spec * vec3(1.0);
     
-    // Enhanced lighting calculation
     vec3 finalColor = ambient + (diffuse + specular) * attenuation;
     
-    // Boost the brightness slightly
-    finalColor = finalColor * 1.2;
+    // Simple contrast adjustment with slightly brighter shadows
+    float minBrightness = 0.1; // Increased from 0.01 for more visible dark areas
+    finalColor = max(finalColor * 1.8, materialColor * minBrightness);
     
     finalColor = clamp(finalColor, 0.0, 1.0);
     color = vec4(finalColor, 1.0);

@@ -67,6 +67,7 @@ add_executable(playground
 	playground/BackgroundFragmentShader.fragmentshader
 	playground/2k_earth_daymap.bmp
 	playground/2k_moon.bmp
+	playground/tilted_conveyor_belt.stl
 	playground/2k_stars_milky_way.bmp
 	playground/2k_sun.bmp
 	playground/sphere.stl

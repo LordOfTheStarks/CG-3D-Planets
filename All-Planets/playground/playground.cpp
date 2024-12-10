@@ -35,10 +35,12 @@ float mouse_sensitivity = 0.1f;
 void handleKeyInput(GLFWwindow* window) {
     float deltaTime = 1.0f / 60.0f;
 
-    // Calculate the camera's right vector
+    // Calculate the camera's right vector 
     glm::vec3 right = glm::normalize(glm::cross(camera_front, camera_up));
 
-    float actualSpeed = camera_speed * deltaTime;
+	// Check if Shift is pressed to speed up the camera movement speed 
+    float speedMultiplier = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) ? 5.0f : 1.0f;
+    float actualSpeed = camera_speed * deltaTime * speedMultiplier;
 
     // Forward/Backward
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
@@ -237,7 +239,7 @@ void updateAnimationLoop() {
 
     // Earth's rotation and orbit
     earth_rotation_angle += (2.0f * PI * simulatedDays) / DAYS_PER_EARTH_ROTATION;
-    earth_orbit_angle += (2.0f * PI * simulatedDays) / DAYS_PER_EARTH_YEAR;
+	earth_orbit_angle -= (2.0f * PI * simulatedDays) / DAYS_PER_EARTH_YEAR; // This is negated because earth orbits in opposite direction/counter-clockwise
 
     // Calculate Earth's position
 	float earth_orbit_radius = 3000.0f; // This is not a real-data/real-scale value, just for visualization
@@ -257,7 +259,7 @@ void updateAnimationLoop() {
     earth.DrawObject();
 
     // Moon's orbit around Earth
-    moon_orbit_angle += (2.0f * PI * simulatedDays) / DAYS_PER_MOON_ORBIT;
+	moon_orbit_angle -= (2.0f * PI * simulatedDays) / DAYS_PER_MOON_ORBIT; // This is also negated because moon orbits in opposite direction/counter-clockwise
 
     // Calculate Moon's position relative to Earth
     float moon_x = earth_x + MOON_ORBIT_DISTANCE * cos(moon_orbit_angle);
@@ -271,6 +273,7 @@ void updateAnimationLoop() {
     // Calculate Moon's rotation
     glm::vec3 moon_to_earth = glm::normalize(glm::vec3(earth_x, 0.0f, earth_z) - glm::vec3(moon_x, 0.0f, moon_z));
     float moon_facing_angle = atan2(moon_to_earth.z, moon_to_earth.x) + PI / 2.0f;
+	moon_facing_angle = -moon_facing_angle;  // Negate angle to face Earth
     moon.M = moon.M * glm::rotate(glm::mat4(1.0f), moon_facing_angle, glm::vec3(0.0f, 1.0f, 0.0f));
 
     // Draw Moon

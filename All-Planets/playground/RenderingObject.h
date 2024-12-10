@@ -1,5 +1,7 @@
 #ifndef RENDERING_OBJECT_H
 #define RENDERING_OBJECT_H
+
+// Include GLEW, GLM, GLFW
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <vector>
@@ -12,15 +14,16 @@ public:
 	RenderingObject();
 	virtual ~RenderingObject();
 
-  void InitializeVAO();
-  void SetVertices(std::vector< glm::vec3 >);
-  void SetNormals(std::vector< glm::vec3 >);
-  void SetTexture(std::vector< glm::vec2 >, GLubyte texturedata[]);
-  void SetTexture(std::vector< glm::vec2 >, std::string bmpPath);
-  void DrawObject();
-  void LoadSTL(std::string);
+	void InitializeVAO();
+	void SetVertices(std::vector< glm::vec3 >);
+	void SetNormals(std::vector< glm::vec3 >);
+	void SetTexture(std::vector< glm::vec2 >, GLubyte texturedata[]);
+	void SetTexture(std::vector< glm::vec2 >, std::string bmpPath);
+	void DrawObject();
+	void LoadSTL(std::string);
 
-  bool isSeamVertex(const glm::vec3& normalized);
+	// Check if a vertex is a seam vertex
+	bool isSeamVertex(const glm::vec3& normalized);
 
   std::vector<glm::vec2>& GetUVBuffer() { return uvbufferdata; }
 

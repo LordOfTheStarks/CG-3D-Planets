@@ -402,7 +402,7 @@ bool initializeVertexbuffer() {
 bool cleanupVertexbuffer()
 {
   // Cleanup VBO
-  glDeleteVertexArrays(1, &ground.VertexArrayID);
+  glDeleteVertexArrays(1, &sun.VertexArrayID);
   return true;
 }
 

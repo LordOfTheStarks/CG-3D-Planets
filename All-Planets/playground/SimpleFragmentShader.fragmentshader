@@ -1,52 +1,61 @@
-// SimpleFragmentShader.fragmentshader
 #version 450 core
+
+// Output color
 out vec4 color;
 
+// Inputs from vertex shader
 in vec3 fNormal;
 in vec3 fPosition;
 in vec3 fLight;
 in vec2 UV;
 in float fIsSun;
 
+// Texture sampler
 uniform sampler2D myTextureSampler;
 
 void main() {
     if (fIsSun > 0.5) {
+        
+        // Special case for the sun
         vec3 sunColor = texture(myTextureSampler, UV).rgb;
-        color = vec4(sunColor * 1.5, 1.0);
+        color = vec4(sunColor * 1.5, 1.0); // Brighten the sun
         return;
     }
 
     // Enhanced lighting for Earth and Moon
-    vec3 N = normalize(fNormal);
-    vec3 L = normalize(fLight - fPosition);
-    vec3 E = normalize(-fPosition);
-    vec3 R = reflect(-L, N);
+    vec3 N = normalize(fNormal); // Normalized normal
+    vec3 L = normalize(fLight - fPosition); // Light direction
+    vec3 E = normalize(-fPosition); // Eye direction
+    vec3 R = reflect(-L, N); // Reflected light direction
     
-    vec3 materialColor = texture(myTextureSampler, UV).rgb;
+    vec3 materialColor = texture(myTextureSampler, UV).rgb; // Material color
     
-    // Basic lighting parameters
-    float ka = 0.02;    // Keep very low ambient for darker shadows
-    float kd = 2.0;     // Keep high diffuse for brighter lit areas
-    float ks = 0.6;     // Keep original specular
-    float shininess = 12.0; // Keep original shininess
+    // Lighting Parameters!!
+    float ka = 0.02;    // Ambient coefficient
+    float kd = 2.0;     // Diffuse coefficient
+    float ks = 0.6;     // Specular coefficient
+    float shininess = 12.0; // Shininess factor
     
+    // Distance-based attenuation
     float distance = length(fLight - fPosition);
     float attenuation = 1.0 / (1.0 + 0.0000001 * distance * distance);
     
-    vec3 ambient = ka * materialColor;
+    // Phong lighting model
+    vec3 ambient = ka * materialColor; // Ambient Component
+
     float diff = max(dot(N, L), 0.0);
-    vec3 diffuse = kd * diff * materialColor;
+    vec3 diffuse = kd * diff * materialColor; // Diffuse Component
     
     float spec = pow(max(dot(E, R), 0.0), shininess);
-    vec3 specular = ks * spec * vec3(1.0);
+    vec3 specular = ks * spec * vec3(1.0); // Specular Component
     
+    // Final color calculation
     vec3 finalColor = ambient + (diffuse + specular) * attenuation;
     
-    // Simple contrast adjustment with slightly brighter shadows
-    float minBrightness = 0.1; // Increased from 0.01 for more visible dark areas
-    finalColor = max(finalColor * 1.8, materialColor * minBrightness);
+    // Contrast adjustment
+    float minBrightness = 0.1; // Minimum brightness
+    finalColor = max(finalColor * 1.8, materialColor * minBrightness); 
     
-    finalColor = clamp(finalColor, 0.0, 1.0);
-    color = vec4(finalColor, 1.0);
+    finalColor = clamp(finalColor, 0.0, 1.0); 
+    color = vec4(finalColor, 1.0); // Output color
 }

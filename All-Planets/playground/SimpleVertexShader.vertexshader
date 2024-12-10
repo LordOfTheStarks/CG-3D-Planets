@@ -1,22 +1,23 @@
-// SimpleVertexShader.vertexshader
 #version 450 core
+
+// Inputs from vertex attributes
 layout(location = 0) in vec3 vertexPosition_modelspace;
 layout(location = 1) in vec3 vertexNormal_modelspace;
 layout(location = 2) in vec2 vertexUV;
 
 // Uniforms
-uniform mat4 M;
-uniform mat4 V;
-uniform mat4 P;
-uniform vec3 SunPosition_worldspace;
-uniform int isSun;  // Changed from bool to int
+uniform mat4 M; // Model matrix
+uniform mat4 V; // View matrix
+uniform mat4 P; // Projection matrix
+uniform vec3 SunPosition_worldspace; // Sun position
+uniform int isSun; // Flag to identify sun
 
 // Outputs to fragment shader
-out vec3 fNormal;
+out vec3 fNormal; 
 out vec3 fPosition;
 out vec3 fLight;
 out vec2 UV;
-out float fIsSun;  // Changed from bool to float
+out float fIsSun; 
 
 void main() {
     mat4 MV = V * M;
@@ -39,5 +40,5 @@ void main() {
     
     // Pass UV coordinates and sun flag
     UV = vertexUV;
-    fIsSun = float(isSun);  // Convert int to float
+    fIsSun = float(isSun); 
 }

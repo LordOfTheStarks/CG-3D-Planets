@@ -36,18 +36,19 @@ GLuint Model_Matrix_ID;
 GLuint SunPosition_worldspace_ID;
 GLuint IsSun_ID;
 
-RenderingObject ground;
+// Rendering objects
 RenderingObject earth;
 RenderingObject moon;
 RenderingObject sun;
 
+// Animation variables
 float curr_x;
 float curr_y;
 float curr_angle;
 
 float cam_z;
 
-
+// Function declarations
 int main( void ); //<<< main function, called at startup
 void updateAnimationLoop(); //<<< updates the animation loop
 bool initializeWindow(); //<<< initializes the window using GLFW and GLEW
@@ -56,7 +57,7 @@ bool initializeVertexbuffer(); //<<< initializes the vertex buffer array and bin
 bool cleanupVertexbuffer(); //<<< frees all recources from the vertex buffer
 bool closeWindow(); //<<< Closes the OpenGL window and terminates GLFW
 
-void updataMovingObjectTransformation();
+void updataMovingObjectTransformation(); //<<< updates the transformation of the moving object
 
 // Camera functions
 void updateCamera(GLFWwindow* window);

@@ -23,14 +23,15 @@ float lastX = 1024.0f / 2.0f;   // Screen center X
 float lastY = 768.0f / 2.0f;    // Screen center Y
 bool firstMouse = true;
 
-glm::vec3 camera_position = glm::vec3(0.0f, 2000.0f, 3000.0f);  // Positioned higher and further back
-glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 camera_position = glm::vec3(0.0f, 1000.0f, 3000.0f);  // To view the whole system
+glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f); 
 glm::vec3 camera_target = glm::vec3(0.0f, 0.0f, 0.0f);
 glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
 float camera_fov = 45.0f;
-float camera_speed = 200.0f;  // Adjust this value to change movement speed
+float camera_speed = 200.0f; // This is for camera movement speed
 float mouse_sensitivity = 0.1f;
 
+// Handle Key Inputs for camera movement
 void handleKeyInput(GLFWwindow* window) {
     float deltaTime = 1.0f / 60.0f;
 
@@ -61,14 +62,16 @@ void handleKeyInput(GLFWwindow* window) {
     camera_target = camera_position + camera_front;
 }
 
+// Update camera target position and view
 void updateCamera(GLFWwindow* window) {
     handleKeyInput(window);
-    handleTimeControls(window);  // Add time control handling
+	handleTimeControls(window);  // Time control handling for the simulation
 
     // Update view matrix
     V = glm::lookAt(camera_position, camera_target, camera_up);
 }
 
+// Handle mouse movement for camera rotation
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     if (firstMouse) {
         lastX = xpos;
@@ -104,27 +107,27 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     camera_target = camera_position + camera_front;
 }
 // Constants for real-world time periods (in days for better readability)
-const float DAYS_PER_EARTH_ROTATION = 1.0f;          // Earth rotates once per day
-const float EARTH_SCALE = 1.0f;       // Earth is our reference size
-const float DAYS_PER_EARTH_YEAR = 365.25f;          // Days per Earth year
-const float DAYS_PER_MOON_ORBIT = 27.322f;          // Moon's sidereal period in days
+const float DAYS_PER_EARTH_ROTATION = 1.0f;         // Earth rotates once per day
+const float EARTH_SCALE = 1.0f;                     // Earth is our reference size
+const float DAYS_PER_EARTH_YEAR = 365.0f;           // Days per Earth year
+const float DAYS_PER_MOON_ORBIT = 27.3f;            // Moon's sidereal period in days
 const float PI = 3.14159f;
 
 // Convert days to seconds for internal calculations
-const float SECONDS_PER_DAY = 86400.0f;  // 24 * 60 * 60
+const float SECONDS_PER_DAY = 86400.0f;             // 24 * 60 * 60
 
 // Visualization parameters
 const float MOON_ORBIT_DISTANCE = 150.0f;       // Visible distance between Earth and Moon
-const float MOON_SCALE = 0.27f;                 // Moon's size relative to Earth
+const float MOON_SCALE = 0.27f;                 // Moon's size compared to Earth
 
-const float SUN_SCALE = 15.0f;  // Sun is about 109 times larger than Earth
-const float SUN_ORBIT_DISTANCE = 0.0f;  // Sun stays at center
+const float SUN_SCALE = 15.0f;                  // Sun is about 109 times larger than Earth but here scaled down
+const float SUN_ORBIT_DISTANCE = 0.0f;          // Sun stays at center
 
 // Time control constants
-const float BASE_TIME_SCALE = 1000.0f;    // Starting orbital speed
-const float MIN_TIME_SCALE = 100.0f;      // Minimum orbital speed
-const float MAX_TIME_SCALE = 1000000.0f;  // Maximum orbital speed
-float current_time_scale = BASE_TIME_SCALE;  // Current orbital speed
+const float BASE_TIME_SCALE = 1000.0f;          // Starting orbital speed
+const float MIN_TIME_SCALE = 100.0f;            // Minimum orbital speed
+const float MAX_TIME_SCALE = 1000000.0f;        // Maximum orbital speed
+float current_time_scale = BASE_TIME_SCALE;     // Current orbital speed
 
 // Rotation and orbit angles
 float earth_rotation_angle = 0.0f;
@@ -132,11 +135,12 @@ float earth_orbit_angle = 0.0f;
 float moon_rotation_angle = 0.0f;
 float moon_orbit_angle = 0.0f;
 
+// Handle time control inputs for simulation speed
 void handleTimeControls(GLFWwindow* window) {
     static bool xPressed = false;
     static bool cPressed = false;
 
-    // Slow down with X key
+    // Slow down with "X" key
     if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) {
         if (!xPressed) {  // Only trigger once per press
             current_time_scale = max(current_time_scale / 10.0f, MIN_TIME_SCALE);
@@ -148,7 +152,7 @@ void handleTimeControls(GLFWwindow* window) {
         xPressed = false;
     }
 
-    // Speed up with C key
+    // Speed up with "C" key
     if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
         if (!cPressed) {  // Only trigger once per press
             current_time_scale = min(current_time_scale * 10.0f, MAX_TIME_SCALE);
@@ -199,7 +203,7 @@ int main( void )
 		   glfwWindowShouldClose(window) == 0 );
 
 	
-  //Cleanup and close window
+  // Cleanup and close window
   cleanupVertexbuffer();
   glDeleteProgram(programID);
 	closeWindow();
@@ -228,7 +232,7 @@ void updateAnimationLoop() {
     sun.M = glm::mat4(1.0f);
     sun.M = glm::scale(sun.M, glm::vec3(SUN_SCALE));
     glUniformMatrix4fv(Model_Matrix_ID, 1, GL_FALSE, &sun.M[0][0]);
-    glUniform1i(IsSun_ID, 1);
+	glUniform1i(IsSun_ID, 1);  // This is the sun
     sun.DrawObject();
 
     // Earth's rotation and orbit
@@ -236,7 +240,7 @@ void updateAnimationLoop() {
     earth_orbit_angle += (2.0f * PI * simulatedDays) / DAYS_PER_EARTH_YEAR;
 
     // Calculate Earth's position
-    float earth_orbit_radius = 3000.0f; // Increased for better scale
+	float earth_orbit_radius = 3000.0f; // This is not a real-data/real-scale value, just for visualization
     float earth_x = earth_orbit_radius * cos(earth_orbit_angle);
     float earth_z = earth_orbit_radius * sin(earth_orbit_angle);
 
@@ -259,12 +263,12 @@ void updateAnimationLoop() {
     float moon_x = earth_x + MOON_ORBIT_DISTANCE * cos(moon_orbit_angle);
     float moon_z = earth_z + MOON_ORBIT_DISTANCE * sin(moon_orbit_angle);
 
-    // Update Moon's transformation with tidal locking
+    // Update Moon's transformation
     moon.M = glm::mat4(1.0f);
     moon.M = glm::translate(moon.M, glm::vec3(moon_x, 0.0f, moon_z));
     moon.M = glm::scale(moon.M, glm::vec3(MOON_SCALE));
 
-    // Calculate Moon's rotation to maintain tidal locking
+    // Calculate Moon's rotation
     glm::vec3 moon_to_earth = glm::normalize(glm::vec3(earth_x, 0.0f, earth_z) - glm::vec3(moon_x, 0.0f, moon_z));
     float moon_facing_angle = atan2(moon_to_earth.z, moon_to_earth.x) + PI / 2.0f;
     moon.M = moon.M * glm::rotate(glm::mat4(1.0f), moon_facing_angle, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -278,13 +282,13 @@ void updateAnimationLoop() {
     glfwPollEvents();
 }
 
-
 void updataMovingObjectTransformation()
 {
     earth.M = glm::rotate(glm::mat4(1.0f), curr_angle, { 1.0f,0.0f,0.0f });
     earth.M = glm::translate(earth.M, { curr_x,curr_y,0.0f });
 }
 
+// Initialize the GLFW window
 bool initializeWindow()
 {
   // Initialise GLFW
@@ -322,13 +326,14 @@ bool initializeWindow()
 
   // Set up input handling
   glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
-  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  // Hide and capture cursor
-  glfwSetCursorPosCallback(window, mouse_callback);  // Add this line
+  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  // Hides and captures cursor
+  glfwSetCursorPosCallback(window, mouse_callback);             // Set mouse callback
 
-  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);  // RGBA values for black
+  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);  // RGBA values for black background
   return true;
 }
 
+// Initialize the MVP transformation matrices
 bool initializeMVPTransformation()
 {
     // Get handles for uniforms.
@@ -382,7 +387,6 @@ bool initializeVertexbuffer() {
     moon.InitializeVAO();
     moon.LoadSTL("sphere.stl");
 
-    // Set moon texture after loading STL
     std::vector<glm::vec2> moonUV = moon.GetUVBuffer();
     if (!moonUV.empty()) {
         moon.SetTexture(moonUV, "2k_moon.bmp");
@@ -391,6 +395,7 @@ bool initializeVertexbuffer() {
     return true;
 }
 
+// Cleanup the vertex buffer objects
 bool cleanupVertexbuffer()
 {
   // Cleanup VBO
@@ -398,6 +403,7 @@ bool cleanupVertexbuffer()
   return true;
 }
 
+// Close the GLFW window
 bool closeWindow()
 {
   glfwTerminate();

@@ -63,17 +63,10 @@ add_executable(playground
 	playground/parse_stl.h
 	playground/RenderingObject.cpp
 	playground/RenderingObject.h
-	playground/BackgroundVertexShader.vertexshader
-	playground/BackgroundFragmentShader.fragmentshader
 	playground/2k_earth_daymap.bmp
 	playground/2k_moon.bmp
-	playground/tilted_conveyor_belt.stl
-	playground/2k_stars_milky_way.bmp
 	playground/2k_sun.bmp
 	playground/sphere.stl
-	playground/background.h
-	playground/background.cpp
-	playground/stb_image.h
 	common/shader.cpp
 	common/shader.hpp
 	common/texture.cpp

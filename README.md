@@ -1,16 +1,19 @@
-Description of the Project
+Description of the Project:
+
 This project is a 3D solar system simulation created using OpenGL and C++. The scene includes:
 - Sun at the center of the system.
 - Earth orbiting around the Sun.
 - Moon orbiting around the Earth.
 
-Controls
+Controls:
+
 W, A, S, D: Move forward, left, backward, and right.
 Shift (hold): Increase camera movement speed while moving
 C: Increase the speed of orbital movements.
 X: Decrease the speed of orbital movements.
 
 setup tutorial:
+
 Open bash
 git clone https://github.com/LordOfTheStarks/CG-3D-Planets.git
 After cloning, the file is usually located in C:\Users\USER\CG-3D-Planets

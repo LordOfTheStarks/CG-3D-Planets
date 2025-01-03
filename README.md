@@ -9,6 +9,7 @@ Controls:
 
 - W, A, S, D: Move forward, left, backward, and right.
 - Shift (hold): Increase camera movement speed while moving
+- Mouse/Mousepad: To look around
 - C: Increase the speed of orbital movements.
 - X: Decrease the speed of orbital movements.
 
